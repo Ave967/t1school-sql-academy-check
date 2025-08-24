@@ -49,6 +49,26 @@ async function checkUser(page: any, user: {
     await page.getByTestId('sign-in-form-email-input').fill(user.email);
     await page.getByTestId('sign-in-form-password-input').fill(user.password);
     await page.getByTestId('sign-in-form-submit-button').click();
+
+     await page.waitForTimeout(1000);
+
+    // Проверка корректности входа
+    const errorElement = await page.getByTestId('sign-in-form-error-container');
+    const isErrorVisible = await errorElement.isVisible().catch(() => false);
+
+
+    if (isErrorVisible) {
+      const errorText = await errorElement.textContent() || 'Ошибка авторизации';
+      console.log(`Ошибка входа для ${user.email}: ${errorText}`);
+      return {
+        email: user.email,
+        easyTasks: 0,
+        mediumTasks: 0,
+        additionalInfo: user.additionalInfo,
+        passed: false,
+        error: `Неправильные данные для входа: ${errorText}`
+      };
+    }
     
     // Переход к тренажеру
     await page.getByRole('link', { name: 'Тренажёр', exact: true }).click();
@@ -142,15 +162,25 @@ test.describe('Проверка прогресса учеников', () => {
     
     const passedUsers = results.filter(r => r.passed);
     const failedUsers = results.filter(r => !r.passed);
+    const errorUsers = results.filter(r => r.error);
     
     console.log(`Прошли все требования: ${passedUsers.length}`);
     console.log(`Не прошли требования: ${failedUsers.length}`);
     console.log(`Процент успеха: ${Math.round((passedUsers.length / results.length) * 100)}%`);
-    
+    console.log(`Ошибки входа/данных: ${errorUsers.length}`);
+
+
     if (failedUsers.length > 0) {
       console.log('\n Список учеников, не прошедших требования:');
       failedUsers.forEach(user => {
         console.log(`- ${user.email} - Легкие: ${user.easyTasks}/16, Средние: ${user.mediumTasks}/11`);
+      });
+    }
+
+    if (errorUsers.length > 0) {
+      console.log('\nСписок пользователей с ошибками входа:');
+      errorUsers.forEach(user => {
+        console.log(`- ${user.email} - ${user.error}`);
       });
     }
     
